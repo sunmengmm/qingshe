@@ -2,6 +2,10 @@
 
 一个无需后端和运行时网络请求的静态浏览器贪吃蛇小游戏。
 
+## 在线游玩
+
+<https://sunmengmm.github.io/qingshe/>
+
 ## 开始游戏
 
 ```bash
