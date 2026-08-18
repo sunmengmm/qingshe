@@ -99,10 +99,10 @@ footer span { margin-right: 6px; color: var(--lime); }
 }
 
 @media (max-width: 640px) {
-  .game-shell { width: min(100% - 24px, 820px); padding-top: 18px; }
-  .hero { padding: 38px 4px 24px; }
+  html, body { height: 100%; overflow: hidden; }
+  .game-shell { width: min(100% - 24px, 820px); min-height: 100dvh; padding: 6px 0; }
+  .hero, .game-shell > footer { display: none; }
   .game-card { width: 100%; }
-  .intro { font-size: 13px; }
   .stats div { padding: 14px 12px; }
   .stats strong { font-size: 18px; }
   .board-wrap { margin: 10px; }

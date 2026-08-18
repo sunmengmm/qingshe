@@ -33,6 +33,37 @@ const touchDirections = {
   right: { label: "向右", vector: { x: 1, y: 0 } },
 };
 
+const expectFitsOneScreen = async page => {
+  const layout = await page.evaluate(() => {
+    const viewport = {
+      width: window.visualViewport?.width ?? window.innerWidth,
+      height: window.visualViewport?.height ?? window.innerHeight,
+    };
+    const boxes = [".topbar", ".game-card", ".stats", ".board-wrap", ".dpad"].map(selector => {
+      const rect = document.querySelector(selector).getBoundingClientRect();
+      return { selector, top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left };
+    });
+    return {
+      viewport,
+      scrollWidth: document.documentElement.scrollWidth,
+      scrollHeight: document.documentElement.scrollHeight,
+      boxes,
+    };
+  });
+
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewport.width + 1);
+  expect(layout.scrollHeight).toBeLessThanOrEqual(layout.viewport.height + 1);
+  for (const box of layout.boxes) {
+    expect(box.left, `${box.selector} left edge`).toBeGreaterThanOrEqual(-1);
+    expect(box.top, `${box.selector} top edge`).toBeGreaterThanOrEqual(-1);
+    expect(box.right, `${box.selector} right edge`).toBeLessThanOrEqual(layout.viewport.width + 1);
+    expect(box.bottom, `${box.selector} bottom edge`).toBeLessThanOrEqual(layout.viewport.height + 1);
+  }
+
+  await page.evaluate(() => window.scrollTo(9999, 9999));
+  expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }))).toEqual({ x: 0, y: 0 });
+};
+
 test("1. starts and moves with keyboard controls", async ({ page }) => {
   await page.getByRole("button", { name: "开始游戏" }).click();
   const before = await state(page);
@@ -155,9 +186,10 @@ for (const viewport of mobileViewports) {
     await page.setViewportSize(viewport);
     await page.reload();
 
+    await expectFitsOneScreen(page);
+
     const board = page.locator("#boardWrap");
     const dpad = page.locator(".dpad");
-    await dpad.scrollIntoViewIfNeeded();
     const boardBox = await board.boundingBox();
     const dpadBox = await dpad.boundingBox();
     expect(Math.abs((dpadBox.x + dpadBox.width / 2) - (boardBox.x + boardBox.width / 2))).toBeLessThanOrEqual(2);
@@ -172,6 +204,7 @@ for (const viewport of mobileViewports) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
 
     await page.getByRole("button", { name: "开始游戏" }).click();
+    await expectFitsOneScreen(page);
     const singleTurns = Array.from({ length: 5 }, () => ["up", "left", "down", "right"]).flat();
     for (const name of singleTurns) {
       const direction = touchDirections[name];
@@ -188,6 +221,16 @@ for (const viewport of mobileViewports) {
       expect((await step(page)).direction).toEqual(touchDirections[names[0]].vector);
       expect((await step(page)).direction).toEqual(touchDirections[names[1]].vector);
     }
+
+    await page.keyboard.press("Space");
+    await expect(page.getByRole("button", { name: "继续游戏" })).toBeVisible();
+    await expectFitsOneScreen(page);
+    await page.getByRole("button", { name: "继续游戏" }).click();
+
+    await page.evaluate(() => window.__snakeTest.setScenario("wall"));
+    await step(page);
+    await expect(page.getByRole("button", { name: "再来一局" })).toBeVisible();
+    await expectFitsOneScreen(page);
   });
 }
 
