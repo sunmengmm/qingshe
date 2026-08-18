@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
     if (message.type() === "error") errors.push(`console: ${message.text()}`);
   });
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto("/?e2e=1");
+  await page.goto("?e2e=1");
   await expect.poll(() => page.evaluate(() => Boolean(window.__snakeTest))).toBe(true);
 });
 

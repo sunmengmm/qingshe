@@ -1,5 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
+const baseURL = process.env.BASE_URL || "http://127.0.0.1:4173";
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
@@ -7,7 +9,7 @@ export default defineConfig({
   retries: 0,
   reporter: "line",
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL,
     headless: true,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
@@ -22,7 +24,7 @@ export default defineConfig({
       use: { browserName: "webkit" },
     },
   ],
-  webServer: {
+  webServer: process.env.BASE_URL ? undefined : {
     command: "python3 -m http.server 4173 --bind 127.0.0.1",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: false,
