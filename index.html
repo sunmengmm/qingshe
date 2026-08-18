@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1511" />
+    <title>青蛇 · 贪吃蛇</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b1511'/%3E%3Cpath d='M45 18H28a12 12 0 0 0 0 24h8a5 5 0 0 1 0 10H18' fill='none' stroke='%23b9f27c' stroke-width='8' stroke-linecap='round'/%3E%3Ccircle cx='44' cy='18' r='3' fill='%230b1511'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="青蛇首页">
+          <span class="brand-mark" aria-hidden="true">S</span>
+          <span>青蛇</span>
+        </a>
+        <button class="sound-toggle" id="soundToggle" type="button" aria-label="切换声音" aria-pressed="true">
+          <span aria-hidden="true">♪</span>
+        </button>
+      </header>
+
+      <section class="hero">
+        <div class="eyebrow"><span></span> CLASSIC ARCADE</div>
+        <h1>别碰到<br /><em>自己的尾巴。</em></h1>
+        <p class="intro">吃掉果实，越变越长。规则很简单，活下来可不简单。</p>
+      </section>
+
+      <section class="game-card" aria-label="贪吃蛇游戏">
+        <div class="stats" aria-live="polite">
+          <div><span>当前得分</span><strong id="score">00</strong></div>
+          <div><span>最佳记录</span><strong id="best">00</strong></div>
+          <div><span>速度</span><strong id="speed">1.0×</strong></div>
+        </div>
+
+        <div class="board-wrap" id="boardWrap">
+          <canvas id="gameCanvas" width="600" height="600" aria-label="贪吃蛇游戏区域"></canvas>
+          <div class="grid-glow" aria-hidden="true"></div>
+          <div class="game-overlay" id="gameOverlay">
+            <div class="mini-snake" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <p class="overlay-kicker" id="overlayKicker">准备好了吗？</p>
+            <h2 id="overlayTitle">开始游走</h2>
+            <p id="overlayText">使用方向键或 WASD 控制青蛇</p>
+            <button class="primary-button" id="startButton" type="button">
+              <span id="startLabel">开始游戏</span><b aria-hidden="true">→</b>
+            </button>
+          </div>
+        </div>
+
+        <div class="game-footer">
+          <div class="keyboard-hint" aria-label="键盘操作提示">
+            <span class="key">W</span>
+            <div><span class="key">A</span><span class="key">S</span><span class="key">D</span></div>
+          </div>
+          <p><strong>方向键 / WASD</strong><br />移动 · 空格键暂停</p>
+
+          <div class="dpad" aria-label="触屏方向控制">
+            <button data-direction="up" aria-label="向上">↑</button>
+            <button data-direction="left" aria-label="向左">←</button>
+            <button data-direction="down" aria-label="向下">↓</button>
+            <button data-direction="right" aria-label="向右">→</button>
+          </div>
+        </div>
+      </section>
+
+      <footer><span>◈</span> 一局很短，再来一局？</footer>
+    </main>
+    <script type="module" src="game.js"></script>
+  </body>
+</html>

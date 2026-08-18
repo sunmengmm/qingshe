@@ -1,0 +1,17 @@
+{
+  "name": "qingshe-browser-game",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test game.test.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:chrome": "playwright test --project=chrome",
+    "test:e2e:webkit": "playwright test --project=webkit",
+    "test:e2e:reliability": "playwright test --repeat-each=3",
+    "test:all": "npm test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}
