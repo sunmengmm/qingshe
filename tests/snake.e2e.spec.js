@@ -20,6 +20,18 @@ test.afterEach(async ({ page }) => {
 
 const state = page => page.evaluate(() => window.__snakeTest.snapshot());
 const step = page => page.evaluate(() => window.__snakeTest.step());
+const mobileViewports = [
+  { name: "iPhone SE", width: 320, height: 568 },
+  { name: "iPhone 8", width: 375, height: 667 },
+  { name: "iPhone 14", width: 390, height: 844 },
+  { name: "iPhone 16 Pro Max", width: 430, height: 932 },
+];
+const touchDirections = {
+  up: { label: "向上", vector: { x: 0, y: -1 } },
+  left: { label: "向左", vector: { x: -1, y: 0 } },
+  down: { label: "向下", vector: { x: 0, y: 1 } },
+  right: { label: "向右", vector: { x: 1, y: 0 } },
+};
 
 test("1. starts and moves with keyboard controls", async ({ page }) => {
   await page.getByRole("button", { name: "开始游戏" }).click();
@@ -138,9 +150,50 @@ test("touch D-pad and swipe both steer on mobile", async ({ page }) => {
   expect((await step(page)).direction).toEqual({ x: -1, y: 0 });
 });
 
+for (const viewport of mobileViewports) {
+  test(`${viewport.name} has roomy and reliable touch controls`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await page.reload();
+
+    const board = page.locator("#boardWrap");
+    const dpad = page.locator(".dpad");
+    await dpad.scrollIntoViewIfNeeded();
+    const boardBox = await board.boundingBox();
+    const dpadBox = await dpad.boundingBox();
+    expect(Math.abs((dpadBox.x + dpadBox.width / 2) - (boardBox.x + boardBox.width / 2))).toBeLessThanOrEqual(2);
+    expect(dpadBox.y - (boardBox.y + boardBox.height)).toBeGreaterThanOrEqual(12);
+    expect(dpadBox.y - (boardBox.y + boardBox.height)).toBeLessThanOrEqual(20);
+
+    for (const { label } of Object.values(touchDirections)) {
+      const box = await page.getByRole("button", { name: label }).boundingBox();
+      expect(box.width).toBeGreaterThanOrEqual(56);
+      expect(box.height).toBeGreaterThanOrEqual(56);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
+
+    await page.getByRole("button", { name: "开始游戏" }).click();
+    const singleTurns = Array.from({ length: 5 }, () => ["up", "left", "down", "right"]).flat();
+    for (const name of singleTurns) {
+      const direction = touchDirections[name];
+      await page.getByRole("button", { name: direction.label }).dispatchEvent("pointerdown", { pointerType: "touch" });
+      expect((await step(page)).direction).toEqual(direction.vector);
+    }
+
+    const quickTurns = Array.from({ length: 5 }, () => [["up", "left"], ["down", "right"]]).flat();
+    for (const names of quickTurns) {
+      for (const name of names) {
+        await page.getByRole("button", { name: touchDirections[name].label }).dispatchEvent("pointerdown", { pointerType: "touch" });
+      }
+      expect((await state(page)).queuedDirections).toHaveLength(2);
+      expect((await step(page)).direction).toEqual(touchDirections[names[0]].vector);
+      expect((await step(page)).direction).toEqual(touchDirections[names[1]].vector);
+    }
+  });
+}
+
 for (const viewport of [
   { name: "desktop", width: 1280, height: 720 },
-  { name: "mobile", width: 390, height: 844 },
+  ...mobileViewports,
 ]) {
   test(`${viewport.name} viewport keeps the complete game card in bounds`, async ({ page }) => {
     await page.setViewportSize(viewport);
@@ -152,7 +205,7 @@ for (const viewport of [
     expect(box.height).toBeLessThanOrEqual(viewport.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
     await expect(page.getByRole("button", { name: "开始游戏" })).toBeVisible();
-    if (viewport.name === "mobile") await expect(page.getByRole("button", { name: "向上" })).toBeVisible();
+    if (viewport.width <= 640) await expect(page.getByRole("button", { name: "向上" })).toBeVisible();
     else await expect(page.locator(".keyboard-hint")).toBeVisible();
   });
 }
