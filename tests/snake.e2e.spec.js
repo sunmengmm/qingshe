@@ -21,6 +21,7 @@ test.afterEach(async ({ page }) => {
 const state = page => page.evaluate(() => window.__snakeTest.snapshot());
 const step = page => page.evaluate(() => window.__snakeTest.step());
 const mobileViewports = [
+  { name: "compact iPhone Safari", width: 320, height: 480 },
   { name: "iPhone SE", width: 320, height: 568 },
   { name: "iPhone 8", width: 375, height: 667 },
   { name: "iPhone 14", width: 390, height: 844 },
@@ -39,9 +40,18 @@ const expectFitsOneScreen = async page => {
       width: window.visualViewport?.width ?? window.innerWidth,
       height: window.visualViewport?.height ?? window.innerHeight,
     };
-    const boxes = [".topbar", ".game-card", ".stats", ".board-wrap", ".dpad"].map(selector => {
-      const rect = document.querySelector(selector).getBoundingClientRect();
-      return { selector, top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left };
+    const boxes = [".topbar", ".hero h1", ".game-card", ".stats", ".board-wrap", ".dpad"].map(selector => {
+      const element = document.querySelector(selector);
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        selector,
+        visible: style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        left: rect.left,
+      };
     });
     return {
       viewport,
@@ -54,6 +64,7 @@ const expectFitsOneScreen = async page => {
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewport.width + 1);
   expect(layout.scrollHeight).toBeLessThanOrEqual(layout.viewport.height + 1);
   for (const box of layout.boxes) {
+    expect(box.visible, `${box.selector} should be visible`).toBe(true);
     expect(box.left, `${box.selector} left edge`).toBeGreaterThanOrEqual(-1);
     expect(box.top, `${box.selector} top edge`).toBeGreaterThanOrEqual(-1);
     expect(box.right, `${box.selector} right edge`).toBeLessThanOrEqual(layout.viewport.width + 1);
