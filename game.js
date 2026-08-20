@@ -72,10 +72,10 @@ export class SnakeGame {
   }
 
   get interval() {
-    if (this.score <= 10) return 150 - this.score * 2;
-    return Math.max(80, 130 - (this.score - 10) * 4);
+    if (this.score <= 10) return 220 - this.score * 3;
+    return Math.max(130, 190 - (this.score - 10) * 2);
   }
-  get speed() { return 150 / this.interval; }
+  get speed() { return 220 / this.interval; }
 }
 
 const canvas = typeof document !== "undefined" ? document.querySelector("#gameCanvas") : null;

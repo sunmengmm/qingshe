@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { SnakeGame } from "./game.js";
+import { DIRECTIONS, SnakeGame } from "./game.js";
 
 test("starts with three segments and advances", () => {
   const game = new SnakeGame(10, () => 0);
@@ -22,22 +22,22 @@ test("eating grows the snake and increases score", () => {
   assert.ok(game.interval < startingInterval);
 });
 
-test("uses a gentle early-game speed curve with a safe maximum", () => {
+test("uses a relaxed full-game speed curve with a safe maximum", () => {
   const game = new SnakeGame();
   const expectedIntervals = new Map([
-    [0, 150], [6, 138], [10, 130], [11, 126], [23, 80], [40, 80],
+    [0, 220], [6, 202], [10, 190], [11, 188], [20, 170], [40, 130], [80, 130],
   ]);
   for (const [score, interval] of expectedIntervals) {
     game.score = score;
     assert.equal(game.interval, interval, `score ${score}`);
   }
 
-  let previous = 150;
-  for (let score = 1; score <= 40; score++) {
+  let previous = 220;
+  for (let score = 1; score <= 80; score++) {
     game.score = score;
     assert.ok(game.interval <= previous, `score ${score} should not slow down`);
-    assert.ok(previous - game.interval <= 4, `score ${score} should change by at most 4ms`);
-    assert.ok(game.interval >= 80, `score ${score} should stay at or above 80ms`);
+    assert.ok(previous - game.interval <= 3, `score ${score} should change by at most 3ms`);
+    assert.ok(game.interval >= 130, `score ${score} should stay at or above 130ms`);
     previous = game.interval;
   }
 
@@ -52,6 +52,19 @@ test("rejects an immediate reverse turn", () => {
   assert.equal(game.setDirection("up"), true);
   game.tick();
   assert.deepEqual(game.direction, { x: 0, y: -1 });
+});
+
+test("applies 20 consecutive valid turns on the next movement tick", () => {
+  const game = new SnakeGame(100, () => 0);
+  game.food = { x: 0, y: 0 };
+  game.start();
+
+  for (let turn = 0; turn < 20; turn++) {
+    const name = turn % 2 === 0 ? "up" : "right";
+    assert.equal(game.setDirection(name), true, `turn ${turn + 1} should be accepted`);
+    assert.equal(game.tick().type, "move", `turn ${turn + 1} should advance safely`);
+    assert.deepEqual(game.direction, DIRECTIONS[name], `turn ${turn + 1} should apply on the next tick`);
+  }
 });
 
 test("ends when the snake hits a wall", () => {
