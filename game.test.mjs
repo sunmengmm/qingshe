@@ -85,16 +85,20 @@ test("completes a start, eat, game-over, and restart lifecycle", () => {
   assert.ok(acceleratedInterval < game.interval);
 });
 
-test("page exposes keyboard, touch, score, and restart controls", () => {
+test("page exposes keyboard, touch, pause, score, and restart controls", () => {
   const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
   const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
   for (const required of [
     'id="gameCanvas"', 'id="score"', 'id="best"', 'id="speed"',
     'id="startButton"', 'data-direction="up"', 'data-direction="down"',
-    'data-direction="left"', 'data-direction="right"',
+    'data-direction="left"', 'data-direction="right"', 'id="pauseButton"',
   ]) assert.ok(html.includes(required), `missing ${required}`);
   assert.match(html, /方向键 \/ WASD/);
+  assert.match(html, /点击方向键或滑动控制/);
   assert.match(html, /空格键暂停/);
+  assert.match(html, /viewport-fit=cover/);
   assert.match(css, /\.game-card \{ width: min\(100%, 560px\)/);
   assert.match(css, /@media \(max-height: 820px\) and \(min-width: 641px\)/);
+  assert.match(css, /--safe-top: env\(safe-area-inset-top/);
+  assert.match(css, /--safe-bottom: env\(safe-area-inset-bottom/);
 });

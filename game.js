@@ -86,7 +86,7 @@ if (canvas) {
     kicker: document.querySelector("#overlayKicker"), title: document.querySelector("#overlayTitle"),
     text: document.querySelector("#overlayText"), start: document.querySelector("#startButton"),
     startLabel: document.querySelector("#startLabel"), sound: document.querySelector("#soundToggle"),
-    board: document.querySelector("#boardWrap"),
+    pause: document.querySelector("#pauseButton"), board: document.querySelector("#boardWrap"),
   };
   const savedBest = Number(localStorage.getItem("qingshe-best"));
   let best = Number.isSafeInteger(savedBest) && savedBest >= 0 ? savedBest : 0;
@@ -172,6 +172,32 @@ if (canvas) {
     if (!testMode && game.status === "playing") timer = setTimeout(loop, game.interval);
   }
 
+  function syncPauseControl() {
+    const paused = game.status === "paused";
+    const available = game.status === "playing" || paused;
+    ui.pause.disabled = !available;
+    ui.pause.setAttribute("aria-pressed", String(paused));
+    ui.pause.setAttribute("aria-label", paused ? "恢复游戏" : "暂停游戏");
+    ui.pause.firstElementChild.textContent = paused ? "▶" : "Ⅱ";
+  }
+
+  function togglePause() {
+    if (game.status !== "playing" && game.status !== "paused") return;
+    const status = game.togglePause();
+    ui.overlay.dataset.state = status;
+    ui.overlay.classList.toggle("hidden", status !== "paused");
+    if (status === "paused") {
+      clearTimeout(timer);
+      ui.kicker.textContent = "休息一下";
+      ui.title.textContent = "已暂停";
+      ui.text.textContent = "点击继续，随时回到游戏";
+      ui.startLabel.textContent = "继续游戏";
+    } else {
+      schedule();
+    }
+    syncPauseControl();
+  }
+
   function loop() {
     const event = game.tick();
     if (event.type === "eat") { tone(640, .08); updateStats(); }
@@ -183,8 +209,9 @@ if (canvas) {
   function begin() {
     clearTimeout(timer);
     game.reset(); game.start();
+    ui.overlay.dataset.state = "playing";
     ui.overlay.classList.add("hidden");
-    updateStats(); draw(); tone(420, .05); schedule();
+    updateStats(); syncPauseControl(); draw(); tone(420, .05); schedule();
   }
 
   function gameOver() {
@@ -199,7 +226,9 @@ if (canvas) {
     ui.title.textContent = `${game.score} 分`;
     ui.text.textContent = game.score ? "差一点，再试一次刷新记录？" : "别着急，找到自己的节奏。";
     ui.startLabel.textContent = "再来一局";
+    ui.overlay.dataset.state = "over";
     ui.overlay.classList.remove("hidden");
+    syncPauseControl();
   }
 
   function steer(name) {
@@ -212,20 +241,21 @@ if (canvas) {
     if (keyMap[event.key]) { event.preventDefault(); steer(keyMap[event.key]); }
     if (event.code === "Space" && game.status !== "idle" && game.status !== "over") {
       event.preventDefault();
-      const status = game.togglePause();
-      ui.overlay.classList.toggle("hidden", status !== "paused");
-      if (status === "paused") {
-        clearTimeout(timer); ui.kicker.textContent = "休息一下"; ui.title.textContent = "已暂停";
-        ui.text.textContent = "按空格键继续"; ui.startLabel.textContent = "继续游戏";
-      } else schedule();
+      togglePause();
     }
   });
   document.querySelectorAll("[data-direction]").forEach(button => button.addEventListener("pointerdown", event => { event.preventDefault(); steer(button.dataset.direction); }));
+  ui.pause.addEventListener("click", togglePause);
   ui.start.addEventListener("click", () => {
-    if (game.status === "paused") { game.togglePause(); ui.overlay.classList.add("hidden"); schedule(); }
+    if (game.status === "paused") togglePause();
     else begin();
   });
-  ui.sound.addEventListener("click", () => { soundOn = !soundOn; ui.sound.setAttribute("aria-pressed", String(soundOn)); ui.sound.firstElementChild.textContent = soundOn ? "♪" : "×"; });
+  ui.sound.addEventListener("click", () => {
+    soundOn = !soundOn;
+    ui.sound.setAttribute("aria-pressed", String(soundOn));
+    ui.sound.setAttribute("aria-label", soundOn ? "关闭声音" : "开启声音");
+    ui.sound.firstElementChild.textContent = soundOn ? "♪" : "×";
+  });
   ui.board.addEventListener("pointerdown", event => { touchStart = { x: event.clientX, y: event.clientY }; });
   ui.board.addEventListener("pointerup", event => {
     if (!touchStart) return;
@@ -235,7 +265,7 @@ if (canvas) {
   });
   window.addEventListener("resize", resizeCanvas);
   ui.best.textContent = String(best).padStart(2, "0");
-  resizeCanvas(); updateStats();
+  resizeCanvas(); updateStats(); syncPauseControl();
 
   if (testMode) {
     const snapshot = () => structuredClone({

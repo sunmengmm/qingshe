@@ -75,6 +75,117 @@ const expectFitsOneScreen = async page => {
   expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }))).toEqual({ x: 0, y: 0 });
 };
 
+test("mobile UI respects iPhone safe areas and stays scroll locked", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await page.addStyleTag({ content: ":root { --safe-top: 59px; --safe-bottom: 34px; }" });
+
+  const layout = await page.evaluate(() => {
+    const topbar = document.querySelector(".topbar").getBoundingClientRect();
+    const shell = document.querySelector(".game-shell").getBoundingClientRect();
+    const dpad = document.querySelector(".dpad").getBoundingClientRect();
+    return {
+      topbarTop: topbar.top,
+      shellBottom: shell.bottom,
+      dpadBottom: dpad.bottom,
+      viewportHeight: window.visualViewport?.height ?? window.innerHeight,
+      bodyMinHeight: getComputedStyle(document.body).minHeight,
+      bodyPosition: getComputedStyle(document.body).position,
+    };
+  });
+
+  expect(layout.topbarTop).toBeGreaterThanOrEqual(67);
+  expect(layout.shellBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
+  expect(layout.dpadBottom).toBeLessThanOrEqual(layout.viewportHeight - 42);
+  expect(layout.bodyMinHeight).toBe("0px");
+  expect(layout.bodyPosition).toBe("fixed");
+  await expectFitsOneScreen(page);
+
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expectFitsOneScreen(page);
+  await page.getByRole("button", { name: "暂停游戏" }).click();
+  await expectFitsOneScreen(page);
+  await page.getByRole("button", { name: "恢复游戏" }).click();
+  await page.evaluate(() => window.__snakeTest.setScenario("wall"));
+  await step(page);
+  await expectFitsOneScreen(page);
+});
+
+test("mobile UI explains touch input and exposes pause and sound states", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+
+  await expect(page.getByText("点击方向键或滑动控制")).toBeVisible();
+  await expect(page.locator(".desktop-instruction")).toBeHidden();
+  await expect(page.locator(".keyboard-hint")).toBeHidden();
+  await expect(page.locator("#gameOverlay")).toHaveAttribute("data-state", "idle");
+  await expect(page.locator("#overlayKicker")).toBeHidden();
+  await expect(page.locator("#overlayTitle")).toBeHidden();
+
+  const pause = page.getByRole("button", { name: "暂停游戏" });
+  const sound = page.getByRole("button", { name: "关闭声音" });
+  for (const control of [pause, sound]) {
+    const box = await control.boundingBox();
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+  }
+
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  await expect(pause).toBeEnabled();
+  await pause.click();
+  const paused = await state(page);
+  expect(paused.status).toBe("paused");
+  expect((await step(page)).snake).toEqual(paused.snake);
+  await expect(page.getByRole("button", { name: "恢复游戏" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "恢复游戏" })).toHaveCSS("background-color", "rgb(185, 242, 124)");
+  await expect(page.locator("#gameOverlay")).toHaveAttribute("data-state", "paused");
+
+  await page.getByRole("button", { name: "恢复游戏" }).click();
+  expect((await state(page)).status).toBe("playing");
+  await sound.click();
+  await expect(page.getByRole("button", { name: "开启声音" })).toHaveAttribute("aria-pressed", "false");
+});
+
+test("mobile secondary text and controls meet contrast and size thresholds", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+
+  const metrics = await page.evaluate(() => {
+    const parseColor = value => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+    const luminance = color => {
+      const channels = color.map(value => {
+        const channel = value / 255;
+        return channel <= .04045 ? channel / 12.92 : ((channel + .055) / 1.055) ** 2.4;
+      });
+      return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+    };
+    const contrast = (foreground, background) => {
+      const light = Math.max(luminance(foreground), luminance(background));
+      const dark = Math.min(luminance(foreground), luminance(background));
+      return (light + .05) / (dark + .05);
+    };
+    const statsLabel = getComputedStyle(document.querySelector(".stats span"));
+    const overlayText = getComputedStyle(document.querySelector(".mobile-instruction"));
+    const sound = getComputedStyle(document.querySelector("#soundToggle"));
+    const pause = getComputedStyle(document.querySelector("#pauseButton"));
+    return {
+      statsContrast: contrast(parseColor(statsLabel.color), [12, 23, 17]),
+      instructionContrast: contrast(parseColor(overlayText.color), [9, 19, 13]),
+      soundContrast: contrast(parseColor(sound.color), [8, 16, 12]),
+      pauseContrast: contrast(parseColor(pause.color), [16, 28, 22]),
+      soundFontSize: parseFloat(sound.fontSize),
+      pauseFontSize: parseFloat(pause.fontSize),
+    };
+  });
+
+  expect(metrics.statsContrast).toBeGreaterThanOrEqual(4.5);
+  expect(metrics.instructionContrast).toBeGreaterThanOrEqual(4.5);
+  expect(metrics.soundContrast).toBeGreaterThanOrEqual(3);
+  expect(metrics.pauseContrast).toBeGreaterThanOrEqual(3);
+  expect(metrics.soundFontSize).toBeGreaterThanOrEqual(20);
+  expect(metrics.pauseFontSize).toBeGreaterThanOrEqual(18);
+});
+
 test("1. starts and moves with keyboard controls", async ({ page }) => {
   await page.getByRole("button", { name: "开始游戏" }).click();
   const before = await state(page);
@@ -204,8 +315,8 @@ for (const viewport of mobileViewports) {
     const boardBox = await board.boundingBox();
     const dpadBox = await dpad.boundingBox();
     expect(Math.abs((dpadBox.x + dpadBox.width / 2) - (boardBox.x + boardBox.width / 2))).toBeLessThanOrEqual(2);
-    expect(dpadBox.y - (boardBox.y + boardBox.height)).toBeGreaterThanOrEqual(12);
-    expect(dpadBox.y - (boardBox.y + boardBox.height)).toBeLessThanOrEqual(20);
+    expect(dpadBox.y - (boardBox.y + boardBox.height)).toBeGreaterThanOrEqual(8);
+    expect(dpadBox.y - (boardBox.y + boardBox.height)).toBeLessThanOrEqual(16);
 
     for (const { label } of Object.values(touchDirections)) {
       const box = await page.getByRole("button", { name: label }).boundingBox();
