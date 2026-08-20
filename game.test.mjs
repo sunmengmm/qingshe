@@ -14,11 +14,35 @@ test("starts with three segments and advances", () => {
 test("eating grows the snake and increases score", () => {
   const game = new SnakeGame(10, () => 0);
   game.food = { x: 6, y: 5 };
+  const startingInterval = game.interval;
   game.start();
   assert.equal(game.tick().type, "eat");
   assert.equal(game.score, 1);
   assert.equal(game.snake.length, 4);
-  assert.ok(game.interval < 145);
+  assert.ok(game.interval < startingInterval);
+});
+
+test("uses a gentle early-game speed curve with a safe maximum", () => {
+  const game = new SnakeGame();
+  const expectedIntervals = new Map([
+    [0, 150], [6, 138], [10, 130], [11, 126], [23, 80], [40, 80],
+  ]);
+  for (const [score, interval] of expectedIntervals) {
+    game.score = score;
+    assert.equal(game.interval, interval, `score ${score}`);
+  }
+
+  let previous = 150;
+  for (let score = 1; score <= 40; score++) {
+    game.score = score;
+    assert.ok(game.interval <= previous, `score ${score} should not slow down`);
+    assert.ok(previous - game.interval <= 4, `score ${score} should change by at most 4ms`);
+    assert.ok(game.interval >= 80, `score ${score} should stay at or above 80ms`);
+    previous = game.interval;
+  }
+
+  game.score = 6;
+  assert.equal(game.speed.toFixed(1), "1.1");
 });
 
 test("rejects an immediate reverse turn", () => {

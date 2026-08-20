@@ -71,8 +71,11 @@ export class SnakeGame {
     return { type: "move" };
   }
 
-  get interval() { return Math.max(65, 145 - this.score * 7); }
-  get speed() { return 145 / this.interval; }
+  get interval() {
+    if (this.score <= 10) return 150 - this.score * 2;
+    return Math.max(80, 130 - (this.score - 10) * 4);
+  }
+  get speed() { return 150 / this.interval; }
 }
 
 const canvas = typeof document !== "undefined" ? document.querySelector("#gameCanvas") : null;

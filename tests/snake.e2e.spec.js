@@ -204,7 +204,20 @@ test("2. eating grows the snake, scores, and speeds up", async ({ page }) => {
   expect(after.score).toBe(1);
   expect(after.interval).toBeLessThan(before.interval);
   await expect(page.locator("#score")).toHaveText("01");
-  await expect(page.locator("#speed")).not.toHaveText("1.0×");
+  await expect(page.locator("#speed")).toHaveText(`${after.speed.toFixed(1)}×`);
+});
+
+test("speed display follows the gentle progression curve", async ({ page }) => {
+  for (const [score, interval, label] of [
+    [0, 150, "1.0×"],
+    [6, 138, "1.1×"],
+    [10, 130, "1.2×"],
+    [23, 80, "1.9×"],
+  ]) {
+    const snapshot = await page.evaluate(value => window.__snakeTest.forceScore(value), score);
+    expect(snapshot.interval).toBe(interval);
+    await expect(page.locator("#speed")).toHaveText(label);
+  }
 });
 
 test("3. an immediate reverse direction is rejected", async ({ page }) => {
