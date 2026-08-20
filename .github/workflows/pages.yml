@@ -18,7 +18,7 @@ concurrency:
 jobs:
   test-and-package:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -32,14 +32,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install WebKit
-        run: npx playwright install --with-deps webkit
-
       - name: Run unit tests
         run: npm test
 
-      - name: Run browser tests three times
-        run: npm run test:e2e:reliability
+      - name: Run Chrome tests three times
+        run: npm run test:e2e:chrome -- --repeat-each=3
 
       - name: Prepare static site
         run: |
@@ -54,12 +51,34 @@ jobs:
         with:
           path: _site
 
+  webkit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.0-noble
+      options: --user 1001
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run WebKit tests three times
+        run: npm run test:e2e:webkit -- --repeat-each=3
+
   deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: test-and-package
+    needs: [test-and-package, webkit-tests]
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
