@@ -323,6 +323,31 @@ for (const viewport of mobileViewports) {
       expect(box.width).toBeGreaterThanOrEqual(56);
       expect(box.height).toBeGreaterThanOrEqual(56);
     }
+    const controlBoxes = Object.fromEntries(await Promise.all([
+      ["up", "向上"], ["left", "向左"], ["pause", "暂停游戏"],
+      ["right", "向右"], ["down", "向下"],
+    ].map(async ([name, label]) => [name, await page.getByRole("button", { name: label }).boundingBox()])));
+    const center = box => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+    const positions = Object.fromEntries(Object.entries(controlBoxes).map(([name, box]) => [name, center(box)]));
+    expect(Math.abs(positions.up.x - positions.pause.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(positions.down.x - positions.pause.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(positions.left.y - positions.pause.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(positions.right.y - positions.pause.y)).toBeLessThanOrEqual(1);
+    expect(positions.up.y).toBeLessThan(positions.pause.y);
+    expect(positions.down.y).toBeGreaterThan(positions.pause.y);
+    expect(positions.left.x).toBeLessThan(positions.pause.x);
+    expect(positions.right.x).toBeGreaterThan(positions.pause.x);
+    expect(controlBoxes.pause.width).toBeGreaterThanOrEqual(56);
+    expect(controlBoxes.pause.height).toBeGreaterThanOrEqual(56);
+    for (const gap of [
+      controlBoxes.pause.y - (controlBoxes.up.y + controlBoxes.up.height),
+      controlBoxes.down.y - (controlBoxes.pause.y + controlBoxes.pause.height),
+      controlBoxes.pause.x - (controlBoxes.left.x + controlBoxes.left.width),
+      controlBoxes.right.x - (controlBoxes.pause.x + controlBoxes.pause.width),
+    ]) {
+      expect(gap).toBeGreaterThanOrEqual(8);
+      expect(gap).toBeLessThanOrEqual(12);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
 
     await page.getByRole("button", { name: "开始游戏" }).click();
