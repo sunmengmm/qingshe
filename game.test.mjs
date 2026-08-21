@@ -138,4 +138,5 @@ test("page exposes keyboard, touch, pause, score, and restart controls", () => {
   assert.match(css, /@media \(max-height: 820px\) and \(min-width: 641px\)/);
   assert.match(css, /--safe-top: env\(safe-area-inset-top/);
   assert.match(css, /--safe-bottom: env\(safe-area-inset-bottom/);
+  assert.match(css, /\.board-wrap \{ width: clamp\(140px, calc\(100dvh - 374px/);
 });

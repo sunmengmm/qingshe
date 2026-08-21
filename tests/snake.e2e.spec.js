@@ -137,7 +137,7 @@ test("mobile UI explains touch input and exposes pause and sound states", async 
   expect(paused.status).toBe("paused");
   expect((await step(page)).snake).toEqual(paused.snake);
   await expect(page.getByRole("button", { name: "恢复游戏" })).toHaveAttribute("aria-pressed", "true");
-  await expect.poll(() => page.getByRole("button", { name: "恢复游戏" }).evaluate(button => getComputedStyle(button, "::before").backgroundColor)).toBe("rgb(185, 242, 124)");
+  await expect(page.getByRole("button", { name: "恢复游戏" })).toHaveCSS("background-color", "rgb(185, 242, 124)");
   await expect(page.locator("#gameOverlay")).toHaveAttribute("data-state", "paused");
 
   await page.getByRole("button", { name: "恢复游戏" }).click();
@@ -317,6 +317,29 @@ test("touch D-pad and swipe both steer on mobile", async ({ page }) => {
   expect((await step(page)).direction).toEqual({ x: -1, y: 0 });
 });
 
+test("the compact D-pad maps 36 surrounding touch points to directions", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await page.getByRole("button", { name: "开始游戏" }).click();
+  const box = await page.locator(".dpad").boundingBox();
+  const samples = {
+    up: { initial: "right", xs: [.35, .5, .65], ys: [.05, .2, .3] },
+    down: { initial: "right", xs: [.35, .5, .65], ys: [.7, .8, .95] },
+    left: { initial: "up", xs: [.05, .2, .3], ys: [.35, .5, .65] },
+    right: { initial: "up", xs: [.7, .8, .95], ys: [.35, .5, .65] },
+  };
+
+  for (const [name, sample] of Object.entries(samples)) {
+    for (const x of sample.xs) {
+      for (const y of sample.ys) {
+        await page.evaluate(initial => window.__snakeTest.prepareTurn(initial), sample.initial);
+        await page.mouse.click(box.x + box.width * x, box.y + box.height * y);
+        expect((await state(page)).queuedDirections).toEqual([touchDirections[name].vector]);
+      }
+    }
+  }
+});
+
 for (const viewport of mobileViewports) {
   test(`${viewport.name} has roomy and reliable touch controls`, async ({ page }) => {
     await page.setViewportSize(viewport);
@@ -328,14 +351,18 @@ for (const viewport of mobileViewports) {
     const dpad = page.locator(".dpad");
     const boardBox = await board.boundingBox();
     const dpadBox = await dpad.boundingBox();
+    expect(dpadBox.width).toBeGreaterThanOrEqual(184);
+    expect(dpadBox.width).toBeLessThanOrEqual(190);
+    expect(dpadBox.height).toBeGreaterThanOrEqual(184);
+    expect(dpadBox.height).toBeLessThanOrEqual(190);
     expect(Math.abs((dpadBox.x + dpadBox.width / 2) - (boardBox.x + boardBox.width / 2))).toBeLessThanOrEqual(2);
     expect(dpadBox.y - (boardBox.y + boardBox.height)).toBeGreaterThanOrEqual(8);
     expect(dpadBox.y - (boardBox.y + boardBox.height)).toBeLessThanOrEqual(16);
 
     for (const { label } of Object.values(touchDirections)) {
       const box = await page.getByRole("button", { name: label }).boundingBox();
-      expect(box.width).toBeGreaterThanOrEqual(76);
-      expect(box.height).toBeGreaterThanOrEqual(76);
+      expect(box.width).toBeGreaterThanOrEqual(56);
+      expect(box.height).toBeGreaterThanOrEqual(56);
     }
     const controlBoxes = Object.fromEntries(await Promise.all([
       ["up", "向上"], ["left", "向左"], ["pause", "暂停游戏"],
@@ -351,63 +378,16 @@ for (const viewport of mobileViewports) {
     expect(positions.down.y).toBeGreaterThan(positions.pause.y);
     expect(positions.left.x).toBeLessThan(positions.pause.x);
     expect(positions.right.x).toBeGreaterThan(positions.pause.x);
-    expect(controlBoxes.pause.width).toBeGreaterThanOrEqual(76);
-    expect(controlBoxes.pause.height).toBeGreaterThanOrEqual(76);
-    for (const distance of [
-      positions.pause.y - positions.up.y,
-      positions.down.y - positions.pause.y,
-      positions.pause.x - positions.left.x,
-      positions.right.x - positions.pause.x,
-    ]) {
-      expect(distance).toBeGreaterThanOrEqual(76);
-    }
+    expect(controlBoxes.pause.width).toBeGreaterThanOrEqual(56);
+    expect(controlBoxes.pause.height).toBeGreaterThanOrEqual(56);
     for (const gap of [
       controlBoxes.pause.y - (controlBoxes.up.y + controlBoxes.up.height),
       controlBoxes.down.y - (controlBoxes.pause.y + controlBoxes.pause.height),
       controlBoxes.pause.x - (controlBoxes.left.x + controlBoxes.left.width),
       controlBoxes.right.x - (controlBoxes.pause.x + controlBoxes.pause.width),
     ]) {
-      expect(Math.abs(gap)).toBeLessThanOrEqual(1);
-    }
-
-    const touchFaceMetrics = await page.getByRole("button", { name: "向上" }).evaluate(button => {
-      const target = button.getBoundingClientRect();
-      const face = getComputedStyle(button, "::before");
-      return {
-        targetWidth: target.width,
-        targetHeight: target.height,
-        faceWidth: Number.parseFloat(face.width) + Number.parseFloat(face.borderLeftWidth) + Number.parseFloat(face.borderRightWidth),
-        faceHeight: Number.parseFloat(face.height) + Number.parseFloat(face.borderTopWidth) + Number.parseFloat(face.borderBottomWidth),
-      };
-    });
-    expect(touchFaceMetrics.faceWidth).toBeGreaterThanOrEqual(64);
-    expect(touchFaceMetrics.faceHeight).toBeGreaterThanOrEqual(64);
-    expect(touchFaceMetrics.targetWidth - touchFaceMetrics.faceWidth).toBeGreaterThanOrEqual(10);
-    expect(touchFaceMetrics.targetWidth - touchFaceMetrics.faceWidth).toBeLessThanOrEqual(14);
-
-    for (const [name, { label }] of Object.entries(touchDirections)) {
-      const box = controlBoxes[name];
-      for (const x of [box.x + 1, box.x + box.width / 2, box.x + box.width - 1]) {
-        for (const y of [box.y + 1, box.y + box.height / 2, box.y + box.height - 1]) {
-          const hitLabel = await page.evaluate(point => document.elementFromPoint(point.x, point.y)?.closest("button")?.getAttribute("aria-label"), { x, y });
-          expect(hitLabel, `${label} should own its edge and corner touch area`).toBe(label);
-        }
-      }
-    }
-
-    for (const [first, second, axis] of [
-      ["up", "pause", "vertical"],
-      ["pause", "down", "vertical"],
-      ["left", "pause", "horizontal"],
-      ["pause", "right", "horizontal"],
-    ]) {
-      const a = controlBoxes[first], b = controlBoxes[second];
-      const point = axis === "vertical"
-        ? { x: a.x + a.width / 2, y: (a.y + a.height + b.y) / 2 }
-        : { x: (a.x + a.width + b.x) / 2, y: a.y + a.height / 2 };
-      const hitLabel = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest("button")?.getAttribute("aria-label"), point);
-      const expectedLabels = [first, second].map(name => name === "pause" ? "暂停游戏" : touchDirections[name].label);
-      expect(expectedLabels).toContain(hitLabel);
+      expect(gap).toBeGreaterThanOrEqual(8);
+      expect(gap).toBeLessThanOrEqual(12);
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
 

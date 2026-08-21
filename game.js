@@ -90,6 +90,7 @@ if (canvas) {
     text: document.querySelector("#overlayText"), start: document.querySelector("#startButton"),
     startLabel: document.querySelector("#startLabel"), sound: document.querySelector("#soundToggle"),
     pause: document.querySelector("#pauseButton"), board: document.querySelector("#boardWrap"),
+    dpad: document.querySelector(".dpad"),
   };
   const savedBest = Number(localStorage.getItem("qingshe-best"));
   let best = Number.isSafeInteger(savedBest) && savedBest >= 0 ? savedBest : 0;
@@ -247,7 +248,21 @@ if (canvas) {
       togglePause();
     }
   });
-  document.querySelectorAll("[data-direction]").forEach(button => button.addEventListener("pointerdown", event => { event.preventDefault(); steer(button.dataset.direction); }));
+  ui.dpad.addEventListener("pointerdown", event => {
+    const button = event.target.closest("button");
+    if (button?.dataset.direction) {
+      event.preventDefault();
+      steer(button.dataset.direction);
+      return;
+    }
+    if (button) return;
+
+    event.preventDefault();
+    const rect = ui.dpad.getBoundingClientRect();
+    const dx = event.clientX - (rect.left + rect.width / 2);
+    const dy = event.clientY - (rect.top + rect.height / 2);
+    steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+  });
   ui.pause.addEventListener("click", togglePause);
   ui.start.addEventListener("click", () => {
     if (game.status === "paused") togglePause();
@@ -293,6 +308,13 @@ if (canvas) {
         return snapshot();
       },
       forceScore: score => { game.score = score; updateStats(); return snapshot(); },
+      prepareTurn: direction => {
+        if (!DIRECTIONS[direction]) throw new Error(`Unknown direction: ${direction}`);
+        game.queue = [];
+        game.direction = DIRECTIONS[direction];
+        game.status = "playing";
+        return snapshot();
+      },
       setScenario: name => {
         game.queue = [];
         game.status = "playing";
