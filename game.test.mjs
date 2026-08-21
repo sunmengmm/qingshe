@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { DIRECTIONS, SnakeGame } from "./game.js";
 
@@ -139,4 +140,8 @@ test("page exposes keyboard, touch, pause, score, and restart controls", () => {
   assert.match(css, /--safe-top: env\(safe-area-inset-top/);
   assert.match(css, /--safe-bottom: env\(safe-area-inset-bottom/);
   assert.match(css, /\.board-wrap \{ width: clamp\(140px, calc\(100dvh - 374px/);
+  assert.match(html, /<img class="brand-mark" src="assets\/qingshe-logo\.svg\?v=20260821-1" alt="" width="30" height="30"/);
+  assert.doesNotMatch(html, /class="brand-mark"[^>]*>S<\/span>/);
+  const logo = readFileSync(new URL("./assets/qingshe-logo.svg", import.meta.url));
+  assert.equal(createHash("sha256").update(logo).digest("hex"), "2ff5429b08cce5ee1184d29220c0ce8b8862b1b8f6afd425e492e45a633809df");
 });

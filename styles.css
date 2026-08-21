@@ -38,7 +38,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .topbar { display: flex; align-items: center; justify-content: space-between; }
 .brand { display: flex; gap: 10px; align-items: center; color: var(--ink); text-decoration: none; font-size: 18px; font-weight: 900; letter-spacing: .12em; }
-.brand-mark { display: grid; place-items: center; width: 30px; height: 30px; color: #101a12; background: var(--lime); border-radius: 50% 50% 48% 52%; font-family: ui-monospace, monospace; font-weight: 500; transform: rotate(-8deg); }
+.brand-mark { display: block; flex: 0 0 30px; width: 30px; height: 30px; }
 .sound-toggle { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: rgba(16, 28, 22, .7); cursor: pointer; font-size: 17px; }
 .sound-toggle[aria-pressed="false"] { opacity: .45; }
 

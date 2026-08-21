@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" role="img" aria-labelledby="title desc">
+  <title id="title">青蛇 Logo 方案二：连续急转</title>
+  <desc id="desc">七个圆角方块形成向右下方推进的闪电折线</desc>
+  <g fill="#b9f27c">
+    <rect x="7" y="7" width="12" height="12" rx="3"/>
+    <rect x="21" y="7" width="12" height="12" rx="3"/>
+    <rect x="21" y="21" width="12" height="12" rx="3"/>
+    <rect x="35" y="21" width="12" height="12" rx="3"/>
+    <rect x="35" y="35" width="12" height="12" rx="3"/>
+    <rect x="49" y="35" width="12" height="12" rx="3"/>
+    <rect x="48" y="49" width="14" height="14" rx="4"/>
+  </g>
+  <rect x="57" y="57" width="2.8" height="2.8" rx=".7" fill="#101a12"/>
+</svg>

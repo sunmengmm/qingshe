@@ -75,6 +75,33 @@ const expectFitsOneScreen = async page => {
   expect(await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }))).toEqual({ x: 0, y: 0 });
 };
 
+test("the selected snake SVG replaces the S avatar without changing the brand", async ({ page }) => {
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.reload();
+    const metrics = await page.locator(".brand").evaluate(brand => {
+      const logo = brand.querySelector(".brand-mark");
+      const box = logo.getBoundingClientRect();
+      return {
+        tagName: logo.tagName,
+        width: box.width,
+        height: box.height,
+        complete: logo.complete,
+        naturalWidth: logo.naturalWidth,
+        naturalHeight: logo.naturalHeight,
+        text: brand.lastElementChild.textContent,
+        wrapping: brand.getBoundingClientRect().height > 44,
+      };
+    });
+    expect(metrics).toMatchObject({
+      tagName: "IMG", width: 30, height: 30, complete: true,
+      text: "青蛇", wrapping: false,
+    });
+    expect(metrics.naturalWidth).toBeGreaterThan(0);
+    expect(metrics.naturalHeight).toBe(metrics.naturalWidth);
+  }
+});
+
 test("mobile UI respects iPhone safe areas and stays scroll locked", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
