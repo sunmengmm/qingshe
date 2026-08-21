@@ -42,6 +42,7 @@ jobs:
         run: |
           mkdir _site
           cp index.html styles.css game.js _site/
+          cp -R assets _site/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

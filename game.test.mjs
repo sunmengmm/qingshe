@@ -126,6 +126,7 @@ test("completes a start, eat, game-over, and restart lifecycle", () => {
 test("page exposes keyboard, touch, pause, score, and restart controls", () => {
   const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
   const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
+  const pagesWorkflow = readFileSync(new URL("./.github/workflows/pages.yml", import.meta.url), "utf8");
   for (const required of [
     'id="gameCanvas"', 'id="score"', 'id="best"', 'id="speed"',
     'id="startButton"', 'data-direction="up"', 'data-direction="down"',
@@ -144,4 +145,5 @@ test("page exposes keyboard, touch, pause, score, and restart controls", () => {
   assert.doesNotMatch(html, /class="brand-mark"[^>]*>S<\/span>/);
   const logo = readFileSync(new URL("./assets/qingshe-logo.svg", import.meta.url));
   assert.equal(createHash("sha256").update(logo).digest("hex"), "2ff5429b08cce5ee1184d29220c0ce8b8862b1b8f6afd425e492e45a633809df");
+  assert.match(pagesWorkflow, /cp -R assets _site\//);
 });
