@@ -78,12 +78,17 @@ canvas { display: block; width: 100%; height: 100%; }
 .key { display: inline-grid; width: 26px; height: 24px; place-items: center; border: 1px solid var(--line); border-radius: 2px; color: var(--muted); background: rgba(255,255,255,.025); font: 10px ui-monospace, monospace; }
 .game-footer p { margin: 0 0 0 14px; color: #617269; font-size: 10px; line-height: 1.7; }
 .game-footer p strong { color: var(--muted); font-weight: 500; }
-.dpad { display: none; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); gap: 8px; margin-left: auto; }
-.dpad button { min-width: 56px; min-height: 56px; padding: 0; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: rgba(255,255,255,.04); cursor: pointer; font-size: 22px; touch-action: manipulation; transition: transform .08s ease, background .08s ease; }
-.dpad button:active { background: rgba(185, 242, 124, .18); transform: scale(.96); }
+.dpad { display: none; grid-template-columns: repeat(3, 76px); grid-template-rows: repeat(3, 76px); gap: 0; margin-left: auto; }
+.dpad button { position: relative; display: grid; width: 76px; height: 76px; min-width: 76px; min-height: 76px; padding: 0; place-items: center; border: 0; color: var(--ink); background: transparent; cursor: pointer; font-size: 22px; touch-action: manipulation; }
+.dpad button::before { position: absolute; inset: 6px; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.04); content: ""; transition: transform .08s ease, background .08s ease; }
+.dpad button > span { position: relative; z-index: 1; pointer-events: none; }
+.dpad button:active::before { background: rgba(185, 242, 124, .18); transform: scale(.96); }
+.dpad button:focus-visible { outline: none; }
+.dpad button:focus-visible::before { outline: 2px solid var(--lime); outline-offset: -2px; }
 .dpad button[data-direction="up"] { grid-column: 2; grid-row: 1; }
 .dpad .pause-toggle { grid-column: 2; grid-row: 2; color: var(--lime); font-size: 18px; transition: transform .08s ease; }
-.dpad .pause-toggle[aria-pressed="true"] { color: #0a140c; background: var(--lime); }
+.dpad .pause-toggle[aria-pressed="true"] { color: #0a140c; }
+.dpad .pause-toggle[aria-pressed="true"]::before { background: var(--lime); }
 .dpad .pause-toggle:disabled { color: var(--muted); cursor: default; opacity: 1; }
 .dpad button[data-direction="left"] { grid-column: 1; grid-row: 2; }
 .dpad button[data-direction="down"] { grid-column: 2; grid-row: 3; }
@@ -119,7 +124,7 @@ footer span { margin-right: 6px; color: var(--lime); }
   .game-card { width: 100%; }
   .stats div { padding: 7px 10px; }
   .stats strong { font-size: 18px; }
-  .board-wrap { width: clamp(140px, calc(100dvh - 374px - var(--safe-top) - var(--safe-bottom)), calc(100% - 20px)); margin: 8px auto; }
+  .board-wrap { width: clamp(96px, calc(100dvh - 418px - var(--safe-top) - var(--safe-bottom)), calc(100% - 20px)); margin: 8px auto; }
   .game-footer { padding: 0 10px 8px; }
   .keyboard-hint, .game-footer p { display: none; }
   .dpad { display: grid; margin: 0 auto; }
