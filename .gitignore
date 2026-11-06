@@ -3,3 +3,6 @@ playwright-report/
 test-results/
 .DS_Store
 _site/
+
+# Generated UI screenshots and review reports
+/artifacts/ui-review/
