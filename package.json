@@ -9,7 +9,8 @@
     "test:e2e:chrome": "playwright test --project=chrome",
     "test:e2e:webkit": "playwright test --project=webkit",
     "test:e2e:reliability": "playwright test --repeat-each=3",
-    "test:all": "npm test && npm run test:e2e"
+    "test:all": "npm test && npm run test:e2e",
+    "test:visual": "node tests/capture-ui.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.62.0"

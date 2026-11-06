@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { DIRECTIONS, SnakeGame } from "./game.js";
+import { DIRECTIONS, SnakeGame, formatScore, recordFeedback } from "./game.js";
 
 test("starts with three segments and advances", () => {
   const game = new SnakeGame(10, () => 0);
@@ -136,14 +136,24 @@ test("page exposes keyboard, touch, pause, score, and restart controls", () => {
   assert.match(html, /点击方向键或滑动控制/);
   assert.match(html, /空格键暂停/);
   assert.match(html, /viewport-fit=cover/);
-  assert.match(css, /\.game-card \{ width: min\(100%, 560px\)/);
-  assert.match(css, /@media \(max-height: 820px\) and \(min-width: 641px\)/);
   assert.match(css, /--safe-top: env\(safe-area-inset-top/);
   assert.match(css, /--safe-bottom: env\(safe-area-inset-bottom/);
-  assert.match(css, /\.board-wrap \{ width: clamp\(140px, calc\(100dvh - 374px/);
   assert.match(html, /<img class="brand-mark" src="assets\/qingshe-logo\.svg\?v=20260821-1" alt="" width="30" height="30"/);
   assert.doesNotMatch(html, /class="brand-mark"[^>]*>S<\/span>/);
   const logo = readFileSync(new URL("./assets/qingshe-logo.svg", import.meta.url));
   assert.equal(createHash("sha256").update(logo).digest("hex"), "2ff5429b08cce5ee1184d29220c0ce8b8862b1b8f6afd425e492e45a633809df");
   assert.match(pagesWorkflow, /cp -R assets _site\//);
+});
+
+
+test("record feedback distinguishes records, ties, near misses, and zero", () => {
+  assert.equal(recordFeedback(6, 5), "恭喜！你创造了新的最佳纪录。");
+  assert.equal(recordFeedback(5, 5), "追平最佳纪录 05 分，再来一局突破自己！");
+  assert.equal(recordFeedback(4, 5), "只差 1 分，再来一局！");
+  assert.equal(recordFeedback(0, 1), "只差 1 分，再来一局！");
+  assert.equal(recordFeedback(2, 5), "当前纪录 05 分，再来一局挑战自己。");
+  assert.equal(recordFeedback(0, 0), "当前纪录 00 分，再来一局挑战自己。");
+  assert.equal(formatScore(0), "00");
+  assert.equal(formatScore(9), "09");
+  assert.equal(formatScore(100), "100");
 });

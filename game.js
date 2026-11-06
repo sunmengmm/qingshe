@@ -3,6 +3,15 @@ export const DIRECTIONS = {
   left: { x: -1, y: 0 }, right: { x: 1, y: 0 },
 };
 
+export const formatScore = score => String(score).padStart(2, "0");
+
+export function recordFeedback(score, previousBest) {
+  if (score > previousBest) return "恭喜！你创造了新的最佳纪录。";
+  if (score === previousBest && previousBest > 0) return `追平最佳纪录 ${formatScore(previousBest)} 分，再来一局突破自己！`;
+  if (previousBest - score === 1) return "只差 1 分，再来一局！";
+  return `当前纪录 ${formatScore(previousBest)} 分，再来一局挑战自己。`;
+}
+
 export class SnakeGame {
   constructor(size = 20, random = Math.random) {
     this.size = size;
@@ -90,27 +99,43 @@ if (canvas) {
     text: document.querySelector("#overlayText"), start: document.querySelector("#startButton"),
     startLabel: document.querySelector("#startLabel"), sound: document.querySelector("#soundToggle"),
     pause: document.querySelector("#pauseButton"), board: document.querySelector("#boardWrap"),
-    dpad: document.querySelector(".dpad"),
+    dpad: document.querySelector(".dpad"), hero: document.querySelector("#heroButton"),
+    heroLabel: document.querySelector("#heroLabel"), status: document.querySelector("#gameStatus"),
+    storageNote: document.querySelector("#storageNote"), scoreStat: document.querySelector(".score-stat"),
   };
-  const savedBest = Number(localStorage.getItem("qingshe-best"));
+  function readSaved(key) {
+    try { return localStorage.getItem(key); }
+    catch { ui.storageNote.hidden = false; return null; }
+  }
+  function save(key, value) {
+    try { localStorage.setItem(key, String(value)); }
+    catch { ui.storageNote.hidden = false; }
+  }
+  const savedBest = Number(readSaved("qingshe-best"));
   let best = Number.isSafeInteger(savedBest) && savedBest >= 0 ? savedBest : 0;
+  let previousBest = best;
   let timer = null;
-  let soundOn = true;
+  let soundOn = readSaved("qingshe-sound") !== "off";
   let audioContext;
   let touchStart;
 
   function tone(frequency, duration = .06) {
     if (!soundOn || testMode) return;
-    audioContext ||= new AudioContext();
-    const oscillator = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(.045, audioContext.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + duration);
-    oscillator.connect(gain).connect(audioContext.destination);
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + duration);
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return;
+    try {
+      audioContext ||= new Audio();
+      if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      gain.gain.setValueAtTime(.045, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + duration);
+      oscillator.connect(gain).connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + duration);
+    } catch { /* Audio availability must not interrupt a game. */ }
   }
 
   function resizeCanvas() {
@@ -126,7 +151,7 @@ if (canvas) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#09130d";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "rgba(181, 239, 193, .035)";
+    ctx.strokeStyle = "rgba(181, 239, 193, .065)";
     ctx.lineWidth = 1;
     for (let i = 1; i < game.size; i++) {
       const p = Math.round(i * unit) + .5;
@@ -135,8 +160,8 @@ if (canvas) {
     }
     if (game.food) {
       const x = (game.food.x + .5) * unit, y = (game.food.y + .5) * unit;
-      ctx.shadowColor = "#fb796b"; ctx.shadowBlur = unit * .65;
-      ctx.fillStyle = "#ff7667";
+      ctx.shadowColor = "#fb796b"; ctx.shadowBlur = unit * .45;
+      ctx.fillStyle = "#ff8274";
       ctx.beginPath(); ctx.arc(x, y, unit * .29, 0, Math.PI * 2); ctx.fill();
       ctx.shadowBlur = 0;
       ctx.strokeStyle = "#b9f27c"; ctx.lineWidth = Math.max(1, unit * .07);
@@ -146,9 +171,9 @@ if (canvas) {
       const pad = unit * .09;
       ctx.fillStyle = index === 0 ? "#d9ff9d" : `rgba(185, 242, 124, ${Math.max(.35, 1 - index * .027)})`;
       ctx.shadowColor = index === 0 ? "rgba(185, 242, 124, .75)" : "transparent";
-      ctx.shadowBlur = index === 0 ? unit * .5 : 0;
+      ctx.shadowBlur = index === 0 ? unit * .3 : 0;
       ctx.beginPath();
-      ctx.roundRect(part.x * unit + pad, part.y * unit + pad, unit - pad * 2, unit - pad * 2, unit * .2);
+      ctx.roundRect(part.x * unit + pad, part.y * unit + pad, unit - pad * 2, unit - pad * 2, unit * .12);
       ctx.fill();
       if (index === 0) drawEyes(part, unit);
     });
@@ -159,6 +184,7 @@ if (canvas) {
     const centerX = (head.x + .5) * unit, centerY = (head.y + .5) * unit;
     const dx = game.direction.x * unit * .22, dy = game.direction.y * unit * .22;
     const sideX = game.direction.y * unit * .13, sideY = -game.direction.x * unit * .13;
+    ctx.shadowBlur = 0;
     ctx.fillStyle = "#101b12";
     for (const side of [-1, 1]) {
       ctx.beginPath(); ctx.arc(centerX + dx + sideX * side, centerY + dy + sideY * side, unit * .055, 0, Math.PI * 2); ctx.fill();
@@ -166,8 +192,8 @@ if (canvas) {
   }
 
   function updateStats() {
-    ui.score.textContent = String(game.score).padStart(2, "0");
-    ui.best.textContent = String(best).padStart(2, "0");
+    ui.score.textContent = formatScore(game.score);
+    ui.best.textContent = formatScore(best);
     ui.speed.textContent = `${game.speed.toFixed(1)}×`;
   }
 
@@ -183,6 +209,13 @@ if (canvas) {
     ui.pause.setAttribute("aria-pressed", String(paused));
     ui.pause.setAttribute("aria-label", paused ? "恢复游戏" : "暂停游戏");
     ui.pause.firstElementChild.textContent = paused ? "▶" : "Ⅱ";
+    const labels = { idle: "开始游戏", playing: "暂停游戏", paused: "继续游戏", over: "再来一局" };
+    ui.heroLabel.textContent = labels[game.status];
+    ui.hero.dataset.state = game.status;
+    ui.hero.lastElementChild.textContent = game.status === "playing" ? "Ⅱ" : "→";
+    ui.status.textContent = { idle: "等待开始", playing: `游走中 · ${formatScore(game.score)} 分`, paused: "已暂停", over: "本局结束" }[game.status];
+    ui.status.dataset.state = game.status;
+    ui.overlay.inert = game.status === "playing";
   }
 
   function togglePause() {
@@ -196,15 +229,31 @@ if (canvas) {
       ui.title.textContent = "已暂停";
       ui.text.textContent = "点击继续，随时回到游戏";
       ui.startLabel.textContent = "继续游戏";
+      ui.overlay.inert = false;
     } else {
+      canvas.focus({ preventScroll: true });
       schedule();
     }
     syncPauseControl();
+    if (status === "paused") focusStart();
+  }
+
+  function focusStart() {
+    // Wait for the overlay to become visible before focusing it in WebKit.
+    requestAnimationFrame(() => {
+      if (game.status === "paused" || game.status === "over") ui.start.focus({ preventScroll: true });
+    });
   }
 
   function loop() {
     const event = game.tick();
-    if (event.type === "eat") { tone(640, .08); updateStats(); }
+    if (event.type === "eat") {
+      tone(640, .08);
+      saveBest(); updateStats(); syncPauseControl();
+      ui.scoreStat.classList.remove("earned");
+      void ui.scoreStat.offsetWidth;
+      ui.scoreStat.classList.add("earned");
+    }
     draw();
     if (game.status === "over") return gameOver();
     schedule();
@@ -212,27 +261,39 @@ if (canvas) {
 
   function begin() {
     clearTimeout(timer);
+    previousBest = best;
     game.reset(); game.start();
     ui.overlay.dataset.state = "playing";
     ui.overlay.classList.add("hidden");
+    ui.scoreStat.classList.remove("earned");
     updateStats(); syncPauseControl(); draw(); tone(420, .05); schedule();
+    document.querySelector(".game-shell").classList.add("has-started");
+    canvas.focus({ preventScroll: true });
+    if (matchMedia("(max-width: 1000px)").matches) {
+      document.querySelector(".game-card").scrollIntoView({ block: "nearest", behavior: "instant" });
+    }
+  }
+
+  function saveBest() {
+    if (game.score <= best) return;
+    best = game.score;
+    save("qingshe-best", best);
   }
 
   function gameOver() {
+    clearTimeout(timer);
     tone(130, .24);
-    const isNewBest = game.score > best;
-    if (isNewBest) {
-      best = game.score;
-      localStorage.setItem("qingshe-best", String(best));
-    }
+    const isNewBest = game.score > previousBest;
+    saveBest();
     updateStats();
-    ui.kicker.textContent = isNewBest ? "新的最佳记录" : "本局结束";
-    ui.title.textContent = `${game.score} 分`;
-    ui.text.textContent = game.score ? "差一点，再试一次刷新记录？" : "别着急，找到自己的节奏。";
+    ui.kicker.textContent = isNewBest ? "新的最佳纪录" : "本局结束";
+    ui.title.textContent = `${formatScore(game.score)} 分`;
+    ui.text.textContent = recordFeedback(game.score, previousBest);
     ui.startLabel.textContent = "再来一局";
     ui.overlay.dataset.state = "over";
     ui.overlay.classList.remove("hidden");
     syncPauseControl();
+    focusStart();
   }
 
   function steer(name) {
@@ -242,10 +303,16 @@ if (canvas) {
 
   const keyMap = { ArrowUp: "up", w: "up", W: "up", ArrowDown: "down", s: "down", S: "down", ArrowLeft: "left", a: "left", A: "left", ArrowRight: "right", d: "right", D: "right" };
   document.addEventListener("keydown", event => {
+    if (event.ctrlKey || event.metaKey || event.altKey || event.target.closest("input, textarea, select, [contenteditable='true']")) return;
+    if (event.code === "Space" && event.repeat) { event.preventDefault(); return; }
     if (keyMap[event.key]) { event.preventDefault(); steer(keyMap[event.key]); }
-    if (event.code === "Space" && game.status !== "idle" && game.status !== "over") {
+    if (event.target.closest("button, a")) return;
+    if (event.code === "Space") {
       event.preventDefault();
-      togglePause();
+      if (!event.repeat) primaryAction();
+    } else if (event.key === "Enter" && !event.repeat && game.status !== "playing") {
+      event.preventDefault();
+      primaryAction();
     }
   });
   ui.dpad.addEventListener("pointerdown", event => {
@@ -263,27 +330,51 @@ if (canvas) {
     const dy = event.clientY - (rect.top + rect.height / 2);
     steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
   });
-  ui.pause.addEventListener("click", togglePause);
-  ui.start.addEventListener("click", () => {
-    if (game.status === "paused") togglePause();
-    else begin();
+  ui.dpad.addEventListener("click", event => {
+    // Keyboard and assistive activation have no preceding pointerdown.
+    const button = event.target.closest("button[data-direction]");
+    if (button && event.detail === 0) steer(button.dataset.direction);
   });
-  ui.sound.addEventListener("click", () => {
-    soundOn = !soundOn;
+  ui.pause.addEventListener("click", togglePause);
+  function primaryAction() {
+    if (game.status === "paused" || game.status === "playing") togglePause();
+    else begin();
+  }
+  ui.start.addEventListener("click", primaryAction);
+  ui.hero.addEventListener("click", primaryAction);
+  function syncSound() {
     ui.sound.setAttribute("aria-pressed", String(soundOn));
     ui.sound.setAttribute("aria-label", soundOn ? "关闭声音" : "开启声音");
+    ui.sound.title = soundOn ? "关闭声音" : "开启声音";
     ui.sound.firstElementChild.textContent = soundOn ? "♪" : "×";
+  }
+  ui.sound.addEventListener("click", () => {
+    soundOn = !soundOn;
+    save("qingshe-sound", soundOn ? "on" : "off");
+    syncSound();
+    if (soundOn) tone(420);
   });
-  ui.board.addEventListener("pointerdown", event => { touchStart = { x: event.clientX, y: event.clientY }; });
+  ui.board.addEventListener("pointerdown", event => {
+    if (event.target.closest("button") || !event.isPrimary || event.button !== 0) return;
+    touchStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
+    ui.board.setPointerCapture(event.pointerId);
+  });
   ui.board.addEventListener("pointerup", event => {
-    if (!touchStart) return;
+    if (!touchStart || event.pointerId !== touchStart.id) return;
     const dx = event.clientX - touchStart.x, dy = event.clientY - touchStart.y;
     if (Math.max(Math.abs(dx), Math.abs(dy)) > 20) steer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
     touchStart = null;
   });
+  ui.board.addEventListener("pointercancel", () => { touchStart = null; });
+  ui.board.addEventListener("lostpointercapture", () => { touchStart = null; });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && game.status === "playing") togglePause();
+  });
+  ui.scoreStat.addEventListener("animationend", event => {
+    if (event.animationName === "score-rise") ui.scoreStat.classList.remove("earned");
+  });
   window.addEventListener("resize", resizeCanvas);
-  ui.best.textContent = String(best).padStart(2, "0");
-  resizeCanvas(); updateStats(); syncPauseControl();
+  resizeCanvas(); updateStats(); syncPauseControl(); syncSound();
 
   if (testMode) {
     const snapshot = () => structuredClone({
