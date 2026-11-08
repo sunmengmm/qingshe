@@ -96,8 +96,8 @@ if (canvas) {
     score: document.querySelector("#score"), best: document.querySelector("#best"),
     speed: document.querySelector("#speed"), overlay: document.querySelector("#gameOverlay"),
     kicker: document.querySelector("#overlayKicker"), title: document.querySelector("#overlayTitle"),
-    text: document.querySelector("#overlayText"), start: document.querySelector("#startButton"),
-    startLabel: document.querySelector("#startLabel"), sound: document.querySelector("#soundToggle"),
+    text: document.querySelector("#overlayText"), sound: document.querySelector("#soundToggle"),
+    soundState: document.querySelector("#soundState"),
     pause: document.querySelector("#pauseButton"), board: document.querySelector("#boardWrap"),
     dpad: document.querySelector(".dpad"), hero: document.querySelector("#heroButton"),
     heroLabel: document.querySelector("#heroLabel"), status: document.querySelector("#gameStatus"),
@@ -213,8 +213,9 @@ if (canvas) {
     ui.heroLabel.textContent = labels[game.status];
     ui.hero.dataset.state = game.status;
     ui.hero.lastElementChild.textContent = game.status === "playing" ? "Ⅱ" : "→";
-    ui.status.textContent = { idle: "等待开始", playing: `游走中 · ${formatScore(game.score)} 分`, paused: "已暂停", over: "本局结束" }[game.status];
+    ui.status.textContent = { idle: "等待开始", playing: "游走中", paused: "已暂停", over: "本局结束" }[game.status];
     ui.status.dataset.state = game.status;
+    ui.board.dataset.state = game.status;
     ui.overlay.inert = game.status === "playing";
   }
 
@@ -227,21 +228,22 @@ if (canvas) {
       clearTimeout(timer);
       ui.kicker.textContent = "休息一下";
       ui.title.textContent = "已暂停";
-      ui.text.textContent = "点击继续，随时回到游戏";
-      ui.startLabel.textContent = "继续游戏";
+      ui.text.textContent = "点击「继续游戏」，回到棋盘。";
       ui.overlay.inert = false;
     } else {
       canvas.focus({ preventScroll: true });
       schedule();
     }
     syncPauseControl();
-    if (status === "paused") focusStart();
+    if (status === "paused") focusPrimary();
   }
 
-  function focusStart() {
-    // Wait for the overlay to become visible before focusing it in WebKit.
+  function focusPrimary() {
     requestAnimationFrame(() => {
-      if (game.status === "paused" || game.status === "over") ui.start.focus({ preventScroll: true });
+      if (game.status !== "paused" && game.status !== "over") return;
+      ui.hero.focus({ preventScroll: true });
+      const rect = ui.hero.getBoundingClientRect();
+      if (rect.top < 0 || rect.bottom > innerHeight) ui.hero.scrollIntoView({ block: "nearest", behavior: "instant" });
     });
   }
 
@@ -289,11 +291,10 @@ if (canvas) {
     ui.kicker.textContent = isNewBest ? "新的最佳纪录" : "本局结束";
     ui.title.textContent = `${formatScore(game.score)} 分`;
     ui.text.textContent = recordFeedback(game.score, previousBest);
-    ui.startLabel.textContent = "再来一局";
     ui.overlay.dataset.state = "over";
     ui.overlay.classList.remove("hidden");
     syncPauseControl();
-    focusStart();
+    focusPrimary();
   }
 
   function steer(name) {
@@ -340,13 +341,11 @@ if (canvas) {
     if (game.status === "paused" || game.status === "playing") togglePause();
     else begin();
   }
-  ui.start.addEventListener("click", primaryAction);
   ui.hero.addEventListener("click", primaryAction);
   function syncSound() {
     ui.sound.setAttribute("aria-pressed", String(soundOn));
-    ui.sound.setAttribute("aria-label", soundOn ? "关闭声音" : "开启声音");
-    ui.sound.title = soundOn ? "关闭声音" : "开启声音";
-    ui.sound.firstElementChild.textContent = soundOn ? "♪" : "×";
+    ui.sound.title = soundOn ? "关闭音效" : "开启音效";
+    ui.soundState.textContent = soundOn ? "开" : "关";
   }
   ui.sound.addEventListener("click", () => {
     soundOn = !soundOn;

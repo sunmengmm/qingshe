@@ -129,7 +129,7 @@ test("page exposes keyboard, touch, pause, score, and restart controls", () => {
   const pagesWorkflow = readFileSync(new URL("./.github/workflows/pages.yml", import.meta.url), "utf8");
   for (const required of [
     'id="gameCanvas"', 'id="score"', 'id="best"', 'id="speed"',
-    'id="startButton"', 'data-direction="up"', 'data-direction="down"',
+    'id="heroButton"', 'data-direction="up"', 'data-direction="down"',
     'data-direction="left"', 'data-direction="right"', 'id="pauseButton"',
   ]) assert.ok(html.includes(required), `missing ${required}`);
   assert.match(html, /方向键 \/ WASD/);

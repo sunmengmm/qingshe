@@ -120,7 +120,7 @@ test("mobile UI respects safe areas and allows content to scroll", async ({ page
   expect(layout.bodyPosition).not.toBe("fixed");
   await expectMobileLayout(page);
 
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await expectMobileLayout(page);
   await page.locator("#pauseButton").click();
   await expectMobileLayout(page);
@@ -142,14 +142,19 @@ test("mobile UI explains touch input and exposes pause and sound states", async 
   await expect(page.locator("#overlayTitle")).toBeVisible();
 
   const pause = page.locator("#pauseButton");
-  const sound = page.getByRole("button", { name: "关闭声音" });
+  const sound = page.getByRole("button", { name: "游戏音效" });
+  await expect(sound).toHaveAttribute('aria-pressed', 'true');
+  await expect(sound).toHaveAttribute('title', '关闭音效');
+  await expect(sound).toHaveText('音效 开');
+  await expect(sound.locator('.sound-waves')).toBeVisible();
+  await expect(sound.locator('.sound-muted')).toBeHidden();
   for (const control of [pause, sound]) {
     const box = await control.boundingBox();
     expect(box.width).toBeGreaterThanOrEqual(44);
     expect(box.height).toBeGreaterThanOrEqual(44);
   }
 
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await expect(pause).toBeEnabled();
   await pause.click();
   const paused = await state(page);
@@ -162,7 +167,11 @@ test("mobile UI explains touch input and exposes pause and sound states", async 
   await page.locator("#pauseButton").click();
   expect((await state(page)).status).toBe("playing");
   await sound.click();
-  await expect(page.getByRole("button", { name: "开启声音" })).toHaveAttribute("aria-pressed", "false");
+  await expect(sound).toHaveAttribute('aria-pressed', 'false');
+  await expect(sound).toHaveAttribute('title', '开启音效');
+  await expect(sound).toHaveText('音效 关');
+  await expect(sound.locator('.sound-waves')).toBeHidden();
+  await expect(sound.locator('.sound-muted')).toBeVisible();
 });
 
 test("mobile secondary text and controls meet contrast and size thresholds", async ({ page }) => {
@@ -193,20 +202,22 @@ test("mobile secondary text and controls meet contrast and size thresholds", asy
       soundContrast: contrast(parseColor(sound.color), [8, 16, 12]),
       pauseContrast: contrast(parseColor(pause.color), [16, 28, 22]),
       soundFontSize: parseFloat(sound.fontSize),
+      soundIconSize: document.querySelector('.sound-icon').getBoundingClientRect().width,
       pauseFontSize: parseFloat(pause.fontSize),
     };
   });
 
   expect(metrics.statsContrast).toBeGreaterThanOrEqual(4.5);
   expect(metrics.instructionContrast).toBeGreaterThanOrEqual(4.5);
-  expect(metrics.soundContrast).toBeGreaterThanOrEqual(3);
+  expect(metrics.soundContrast).toBeGreaterThanOrEqual(4.5);
   expect(metrics.pauseContrast).toBeGreaterThanOrEqual(3);
-  expect(metrics.soundFontSize).toBeGreaterThanOrEqual(20);
+  expect(metrics.soundFontSize).toBeGreaterThanOrEqual(12);
+  expect(metrics.soundIconSize).toBeGreaterThanOrEqual(18);
   expect(metrics.pauseFontSize).toBeGreaterThanOrEqual(18);
 });
 
 test("1. starts and moves with keyboard controls", async ({ page }) => {
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   const before = await state(page);
   await page.keyboard.press("KeyW");
   const after = await step(page);
@@ -215,7 +226,7 @@ test("1. starts and moves with keyboard controls", async ({ page }) => {
 });
 
 test("2. eating grows the snake, scores, and speeds up", async ({ page }) => {
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   const before = await state(page);
   await page.evaluate(() => window.__snakeTest.setFoodAhead());
   const after = await step(page);
@@ -223,6 +234,7 @@ test("2. eating grows the snake, scores, and speeds up", async ({ page }) => {
   expect(after.score).toBe(1);
   expect(after.interval).toBeLessThan(before.interval);
   await expect(page.locator("#score")).toHaveText("01");
+  await expect(page.locator('#gameStatus')).toHaveText('游走中');
   await expect(page.locator("#speed")).toHaveText(`${after.speed.toFixed(1)}×`);
 });
 
@@ -241,7 +253,7 @@ test("speed display follows the relaxed full-game progression curve", async ({ p
 });
 
 test("3. an immediate reverse direction is rejected", async ({ page }) => {
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await page.keyboard.press("ArrowLeft");
   const after = await step(page);
   expect(after.direction).toEqual({ x: 1, y: 0 });
@@ -249,24 +261,24 @@ test("3. an immediate reverse direction is rejected", async ({ page }) => {
 });
 
 test("4. hitting a wall ends the game", async ({ page }) => {
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await page.evaluate(() => window.__snakeTest.setScenario("wall"));
   const after = await step(page);
   expect(after.status).toBe("over");
   await expect(page.locator("#overlayKicker")).toHaveText("本局结束");
-  await expect(page.locator("#startButton")).toBeVisible();
+  await expect(page.locator("#heroButton")).toBeVisible();
 });
 
 test("5. hitting the snake body ends the game", async ({ page }) => {
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await page.evaluate(() => window.__snakeTest.setScenario("self"));
   const after = await step(page);
   expect(after.status).toBe("over");
-  await expect(page.locator("#startButton")).toBeVisible();
+  await expect(page.locator("#heroButton")).toBeVisible();
 });
 
 test("6. pause freezes movement and resume continues", async ({ page }) => {
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await page.keyboard.press("Space");
   const paused = await state(page);
   expect(paused.status).toBe("paused");
@@ -277,10 +289,10 @@ test("6. pause freezes movement and resume continues", async ({ page }) => {
 });
 
 test("7. restart restores a clean playable game", async ({ page }) => {
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await page.evaluate(() => window.__snakeTest.setScenario("wall"));
   await step(page);
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   const restarted = await state(page);
   expect(restarted.status).toBe("playing");
   expect(restarted.score).toBe(0);
@@ -291,7 +303,7 @@ test("7. restart restores a clean playable game", async ({ page }) => {
 test("8. a new best score persists after reload", async ({ page }) => {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await page.evaluate(() => {
     window.__snakeTest.forceScore(5);
     window.__snakeTest.setScenario("wall");
@@ -310,18 +322,18 @@ test("9. a corrupted saved best score falls back to zero", async ({ page }) => {
 });
 
 test("10. filling the board ends the game and offers a restart", async ({ page }) => {
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await page.evaluate(() => window.__snakeTest.setScenario("full-board"));
   const after = await step(page);
   expect(after.status).toBe("over");
   expect(after.food).toBeNull();
-  await expect(page.locator("#startButton")).toBeVisible();
+  await expect(page.locator("#heroButton")).toBeVisible();
 });
 
 test("touch D-pad and swipe both steer on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   await page.getByRole("button", { name: "向上" }).dispatchEvent("pointerdown", { pointerType: "touch" });
   expect((await step(page)).direction).toEqual({ x: 0, y: -1 });
 
@@ -337,7 +349,7 @@ test("touch D-pad and swipe both steer on mobile", async ({ page }) => {
 test("the compact D-pad maps 36 surrounding touch points to directions", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
-  await page.locator("#startButton").click();
+  await page.locator("#heroButton").click();
   const box = await page.locator(".dpad").boundingBox();
   const samples = {
     up: { initial: "right", xs: [.35, .5, .65], ys: [.05, .2, .3] },
@@ -384,7 +396,7 @@ for (const viewport of mobileViewports) {
     const controlBoxes = Object.fromEntries(await Promise.all([
       ["up", "向上"], ["left", "向左"], ["pause", "暂停游戏"],
       ["right", "向右"], ["down", "向下"],
-    ].map(async ([name, label]) => [name, await page.getByRole("button", { name: label }).boundingBox()])));
+    ].map(async ([name, label]) => [name, await dpad.getByRole("button", { name: label }).boundingBox()])));
     const center = box => ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
     const positions = Object.fromEntries(Object.entries(controlBoxes).map(([name, box]) => [name, center(box)]));
     expect(Math.abs(positions.up.x - positions.pause.x)).toBeLessThanOrEqual(1);
@@ -408,7 +420,7 @@ for (const viewport of mobileViewports) {
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
 
-    await page.locator("#startButton").click();
+    await page.locator("#heroButton").click();
     await expectMobileLayout(page);
     const singleTurns = Array.from({ length: 5 }, () => ["up", "left", "down", "right"]).flat();
     for (const name of singleTurns) {
@@ -428,13 +440,13 @@ for (const viewport of mobileViewports) {
     }
 
     await page.keyboard.press("Space");
-    await expect(page.locator("#startButton")).toBeVisible();
+    await expect(page.locator("#heroButton")).toBeVisible();
     await expectMobileLayout(page);
-    await page.locator("#startButton").click();
+    await page.locator("#heroButton").click();
 
     await page.evaluate(() => window.__snakeTest.setScenario("wall"));
     await step(page);
-    await expect(page.locator("#startButton")).toBeVisible();
+    await expect(page.locator("#heroButton")).toBeVisible();
     await expectMobileLayout(page);
   });
 }
@@ -452,7 +464,7 @@ for (const viewport of [
     expect(box.width).toBeLessThanOrEqual(viewport.width);
     if (viewport.width > 1000) expect(box.height).toBeLessThanOrEqual(viewport.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport.width);
-    await expect(page.locator("#startButton")).toBeVisible();
+    await expect(page.locator("#heroButton")).toBeVisible();
     if (viewport.width <= 1000) await expect(page.getByRole("button", { name: "向上" })).toBeVisible();
     else await expect(page.locator(".keyboard-hint")).toBeVisible();
   });
@@ -466,6 +478,13 @@ for (const viewport of [
     await page.setViewportSize(viewport);
     await page.reload();
     const checkLayout = async () => {
+      const status = (await state(page)).status;
+      await expect(page.locator('.primary-button')).toHaveCount(1);
+      await expect(page.locator('#gameOverlay button')).toHaveCount(0);
+      await expect(page.locator('#heroButton')).toBeVisible();
+      await expect(page.locator('#heroLabel')).toHaveText({ idle: '开始游戏', playing: '暂停游戏', paused: '继续游戏', over: '再来一局' }[status]);
+      await expect(page.locator('#boardWrap')).toHaveAttribute('data-state', status);
+      await expect(page.locator('.game-shell > footer')).toHaveText('◈ 青蛇 · 找到自己的节奏。');
       const metrics = await page.evaluate(() => {
         const box = selector => {
           const rect = document.querySelector(selector).getBoundingClientRect();
@@ -478,27 +497,33 @@ for (const viewport of [
       expect(metrics.scrollWidth).toBeLessThanOrEqual(viewport.width);
       expect(Math.abs(metrics.board.width - metrics.board.height)).toBeLessThan(1);
       expect(Math.abs(metrics.canvas.width - metrics.canvas.height)).toBeLessThan(1);
+      expect(metrics.button.width).toBeGreaterThanOrEqual(44);
+      expect(metrics.button.height).toBeGreaterThanOrEqual(44);
+      expect(metrics.button.x).toBeGreaterThanOrEqual(0);
+      expect(metrics.button.right).toBeLessThanOrEqual(viewport.width);
       if (viewport.width > 1000) {
         expect(metrics.hero.right).toBeLessThan(metrics.card.x);
         expect(metrics.card.y).toBeGreaterThanOrEqual(0);
         expect(metrics.card.bottom).toBeLessThanOrEqual(viewport.height);
         expect(metrics.button.bottom).toBeLessThanOrEqual(viewport.height);
         expect(metrics.scrollHeight).toBeLessThanOrEqual(viewport.height);
-      } else if (viewport.width >= 390 && (await state(page)).status !== 'idle') {
+      } else if (viewport.width >= 390 && status !== 'idle') {
         // The requested phone/tablet viewports keep board and controls together once playing.
+        expect(metrics.button.y).toBeGreaterThanOrEqual(0);
+        expect(metrics.button.bottom).toBeLessThan(metrics.card.y);
         expect(metrics.board.y).toBeGreaterThanOrEqual(0);
         expect(metrics.dpad.bottom).toBeLessThanOrEqual(viewport.height);
       }
     };
     await checkLayout();
-    await page.locator('#startButton').click();
+    await page.locator('#heroButton').click();
     await checkLayout();
     await page.keyboard.press('Space');
     await checkLayout();
-    await page.locator('#startButton').click();
+    await page.locator('#heroButton').click();
     await page.evaluate(() => { window.__snakeTest.setScenario('wall'); window.__snakeTest.step(); });
     await checkLayout();
-    await page.locator('#startButton').click();
+    await page.locator('#heroButton').click();
     await checkLayout();
   });
 }
@@ -513,7 +538,7 @@ test('record copy uses the pre-game best and restart preserves history', async (
   ]) {
     await page.evaluate(best => localStorage.setItem('qingshe-best', String(best)), best);
     await page.reload();
-    await page.locator('#startButton').click();
+    await page.locator('#heroButton').click();
     await page.evaluate(score => {
       window.__snakeTest.forceScore(score);
       window.__snakeTest.setScenario('wall');
@@ -521,8 +546,8 @@ test('record copy uses the pre-game best and restart preserves history', async (
     }, score);
     await expect(page.locator('#overlayText')).toHaveText(message);
     await expect(page.locator('#overlayTitle')).toHaveText(`${String(score).padStart(2, '0')} 分`);
-    await expect(page.locator('#startButton')).toBeFocused();
-    await page.locator('#startButton').click();
+    await expect(page.locator('#heroButton')).toBeFocused();
+    await page.locator('#heroButton').click();
     expect((await state(page)).score).toBe(0);
     expect((await state(page)).best).toBe(Math.max(best, score));
     await expect(page.locator('#speed')).toHaveText('1.0×');
@@ -530,7 +555,7 @@ test('record copy uses the pre-game best and restart preserves history', async (
 });
 
 test('new best is saved immediately after eating, even before a collision', async ({ page }) => {
-  await page.locator('#startButton').click();
+  await page.locator('#heroButton').click();
   await page.evaluate(() => { window.__snakeTest.setFoodAhead(); window.__snakeTest.step(); });
   await expect(page.locator('#best')).toHaveText('01');
   await expect(page.locator('.score-stat')).toHaveClass(/earned/);
@@ -546,17 +571,17 @@ test('blocked storage does not prevent play, scoring, or restart', async ({ page
   });
   await page.reload();
   await expect(page.locator('#storageNote')).toBeVisible();
-  await page.locator('#startButton').click();
+  await page.locator('#heroButton').click();
   await page.evaluate(() => {
     window.__snakeTest.setFoodAhead(); window.__snakeTest.step();
     window.__snakeTest.setScenario('wall'); window.__snakeTest.step();
   });
   await expect(page.locator('#overlayText')).toHaveText('恭喜！你创造了新的最佳纪录。');
-  await page.locator('#startButton').click();
+  await page.locator('#heroButton').click();
   expect((await state(page)).best).toBe(1);
 });
 
-test('keyboard focus, both start entries, and held pause keys remain predictable', async ({ page }) => {
+test('keyboard focus, the primary action, and held pause keys remain predictable', async ({ page }) => {
   await page.keyboard.press('Enter');
   expect((await state(page)).status).toBe('playing');
   await expect(page.locator('canvas')).toBeFocused();
@@ -568,7 +593,7 @@ test('keyboard focus, both start entries, and held pause keys remain predictable
   await page.locator('#heroButton').click();
   expect((await state(page)).status).toBe('playing');
   await page.locator('#heroButton').click();
-  await expect(page.locator('#startButton')).toBeFocused();
+  await expect(page.locator('#heroButton')).toBeFocused();
   await page.keyboard.press('Enter');
   expect((await state(page)).status).toBe('playing');
   // Space on sound must operate the focused button, without also pausing.
@@ -582,8 +607,44 @@ test('keyboard focus, both start entries, and held pause keys remain predictable
   expect((await state(page)).status).toBe('playing');
 });
 
+test('playing border stays independent of keyboard focus, and the header sound control is keyboard accessible', async ({ page, browserName }) => {
+  const board = page.locator('#boardWrap');
+  const canvas = page.locator('canvas');
+  const sound = page.getByRole('button', { name: '游戏音效' });
+  // macOS WebKit uses Option+Tab to include buttons in keyboard traversal.
+  const optionTab = process.platform === 'darwin' && browserName === 'webkit';
+  const previous = optionTab ? 'Alt+Shift+Tab' : 'Shift+Tab';
+  const next = optionTab ? 'Alt+Tab' : 'Tab';
+  const borderColor = () => board.evaluate(element => getComputedStyle(element).borderTopColor);
+  const idleBorder = await borderColor();
+  await page.locator('#heroButton').click();
+  const playingBorder = await borderColor();
+  expect(playingBorder).not.toBe(idleBorder);
+  await expect(canvas).toBeFocused();
+  await expect(canvas).toHaveCSS('outline-style', 'none');
+  await page.keyboard.press(previous);
+  await expect(page.locator('#heroButton')).toBeFocused();
+  await page.keyboard.press(next);
+  await expect(canvas).toBeFocused();
+  await expect(canvas).toHaveCSS('outline-style', 'dashed');
+  expect(await borderColor()).toBe(playingBorder);
+  await page.keyboard.press(previous);
+  await page.keyboard.press(previous);
+  await expect(sound).toBeFocused();
+  await expect(sound).toHaveCSS('outline-style', 'solid');
+  await expect(canvas).toHaveCSS('outline-style', 'none');
+  expect(await borderColor()).toBe(playingBorder);
+  await sound.hover();
+  await expect(sound).toHaveCSS('border-top-color', 'rgb(185, 242, 124)');
+  await page.keyboard.press('Space');
+  await expect(sound).toHaveAttribute('aria-pressed', 'false');
+  expect((await state(page)).status).toBe('playing');
+  await page.locator('#heroButton').click();
+  expect(await borderColor()).toBe(idleBorder);
+});
+
 test('leaving the tab pauses the game', async ({ page }) => {
-  await page.locator('#startButton').click();
+  await page.locator('#heroButton').click();
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, value: true });
     document.dispatchEvent(new Event('visibilitychange'));
@@ -606,10 +667,10 @@ test('real timer and audio toggle work outside test mode', async ({ page }) => {
   await page.locator('#soundToggle').click();
   await expect(page.locator('#soundToggle')).toHaveAttribute('aria-pressed', 'false');
   await page.locator('#soundToggle').click();
-  await page.locator('#startButton').click();
+  await page.locator('#heroButton').click();
   await page.clock.runFor(2400);
   await expect(page.locator('#gameOverlay')).toHaveAttribute('data-state', 'over');
-  await page.locator('#startButton').click();
+  await page.locator('#heroButton').click();
   await expect(page.locator('#score')).toHaveText('00');
 });
 
@@ -627,9 +688,14 @@ test('touchscreen swipe and D-pad prevent scrolling, surrounding content can scr
       for (let i = 1; i <= 5; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * i / 5, y: y + dy * i / 5, id: 1 }] });
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     };
+    // Finish the surrounding-page fling before measuring game gestures.
+    await page.evaluate(() => {
+      window.__scrollFinished = new Promise(resolve => document.addEventListener('scrollend', () => resolve(true), { once: true }));
+    });
     await swipe(8, 600, 0, -160);
+    await page.evaluate(() => window.__scrollFinished);
     await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
-    await page.locator('#startButton').tap();
+    await page.locator('#heroButton').tap();
     const before = await page.evaluate(() => scrollY);
     const box = await page.locator('#boardWrap').boundingBox();
     await swipe(box.x + box.width / 2, box.y + box.height / 2, 0, -70);

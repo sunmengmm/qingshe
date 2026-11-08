@@ -7,7 +7,7 @@
     <title>青蛇 · 贪吃蛇</title>
     <link rel="icon" type="image/svg+xml" sizes="any" href="assets/qingshe-logo.svg?v=20260821-1" />
     <meta name="description" content="青蛇 QING SHE：吃掉果实，越变越长。用方向键、WASD 或滑动，开始一局轻量经典贪吃蛇。" />
-    <link rel="stylesheet" href="styles.css?v=20261106-1" />
+    <link rel="stylesheet" href="styles.css?v=20261106-2" />
   </head>
   <body>
     <main class="game-shell">
@@ -17,8 +17,13 @@
           <span>青蛇</span>
           <small>QING SHE</small>
         </a>
-        <button class="sound-toggle" id="soundToggle" type="button" aria-label="关闭声音" aria-pressed="true">
-          <span aria-hidden="true">♪</span>
+        <button class="sound-toggle" id="soundToggle" type="button" aria-label="游戏音效" aria-pressed="true" title="关闭音效">
+          <svg class="sound-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m11 5-5 4H3v6h3l5 4V5Z" />
+            <g class="sound-waves"><path d="M15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14" /></g>
+            <path class="sound-muted" d="m16 9 6 6m0-6-6 6" />
+          </svg>
+          <span aria-hidden="true">音效 <span id="soundState">开</span></span>
         </button>
       </header>
 
@@ -47,12 +52,12 @@
 
       <section class="game-card" aria-label="贪吃蛇游戏">
         <div class="stats" aria-label="游戏数据">
-          <div class="score-stat"><span>当前得分</span><strong id="score">00</strong><i class="score-feedback" aria-hidden="true">+1</i></div>
+          <div class="score-stat" aria-live="polite" aria-atomic="true"><span>当前得分</span><strong id="score">00</strong><i class="score-feedback" aria-hidden="true">+1</i></div>
           <div><span>最佳纪录</span><strong id="best">00</strong></div>
           <div><span>速度</span><strong id="speed">1.0×</strong></div>
         </div>
 
-        <div class="board-wrap" id="boardWrap">
+        <div class="board-wrap" id="boardWrap" data-state="idle">
           <canvas id="gameCanvas" width="600" height="600" tabindex="0" aria-label="贪吃蛇游戏区域。方向键或 WASD 移动，空格键暂停或恢复。">你的浏览器需要支持 Canvas 才能游玩。</canvas>
           <div class="grid-glow" aria-hidden="true"></div>
           <div class="game-overlay" id="gameOverlay" data-state="idle" role="group" aria-labelledby="overlayTitle" aria-describedby="overlayText">
@@ -63,9 +68,6 @@
               <span class="desktop-instruction">方向键 / WASD · 空格键暂停</span>
               <span class="mobile-instruction">点击方向键或滑动控制</span>
             </p>
-            <button class="primary-button" id="startButton" type="button">
-              <span id="startLabel">开始游戏</span><b aria-hidden="true">→</b>
-            </button>
           </div>
         </div>
 
@@ -85,8 +87,8 @@
         <p class="storage-note" id="storageNote" role="status" hidden>此浏览器无法保存纪录，本次会话内仍会保留。</p>
       </section>
 
-      <footer><span>◈</span> 一局很短，再来一局？</footer>
+      <footer><span aria-hidden="true">◈</span> 青蛇 · 找到自己的节奏。</footer>
     </main>
-    <script type="module" src="game.js?v=20261106-1"></script>
+    <script type="module" src="game.js?v=20261106-2"></script>
   </body>
 </html>
